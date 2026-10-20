@@ -31,16 +31,44 @@ set /p "USER_TIME=Time: "
 
 if "!USER_TIME!"=="" set USER_TIME=23:00
 
-:: 将中文冒号转换为英文冒号，并校验有效的 24 小时时间
-set "VALID_TIME="
-for /f "delims=" %%T in ('powershell -NoProfile -Command "$t=$env:USER_TIME.Replace([char]0xFF1A, [char]0x3A); if ($t -match '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$') { [Console]::Write($t) }"') do set "VALID_TIME=%%T"
-if not defined VALID_TIME (
+:: ---------------------------------------------------
+:: 使用纯批处理替换中文冒号并校验时间
+:: ---------------------------------------------------
+
+:: 1. 将中文全角冒号“：”替换为英文半角冒号“:”
+set "USER_TIME=!USER_TIME:：=:!"
+
+:: 2. 初步校验：必须是“两位数:两位数”的格式
+echo !USER_TIME! | findstr /r "^[0-9][0-9]:[0-9][0-9]$" >nul
+if errorlevel 1 (
     echo.
-    echo [ERROR] Invalid time. Enter a valid 24-hour time, for example 23:00.
+    echo [ERROR] Invalid time format. Please enter HH:MM like 23:00.
     echo.
     goto INPUT_TIME
 )
-set "USER_TIME=!VALID_TIME!"
+
+:: 3. 进一步校验：提取小时和分钟，去除前导0，并检查范围
+set "HH=!USER_TIME:~0,2!"
+set "MM=!USER_TIME:~3,2!"
+
+:: 去掉前导 0（防止批处理将 08 当成八进制报错）
+if "!HH:~0,1!"=="0" set "HH=!HH:~1,1!"
+if "!MM:~0,1!"=="0" set "MM=!MM:~1,1!"
+
+:: 检查小时是否大于 23，分钟是否大于 59
+if !HH! gtr 23 (
+    echo.
+    echo [ERROR] Invalid hour. Must be 00-23.
+    echo.
+    goto INPUT_TIME
+)
+if !MM! gtr 59 (
+    echo.
+    echo [ERROR] Invalid minute. Must be 00-59.
+    echo.
+    goto INPUT_TIME
+)
+:: ---------------------------------------------------
 
 :: 任务名和程序路径
 set TASK_NAME=GameReminder
