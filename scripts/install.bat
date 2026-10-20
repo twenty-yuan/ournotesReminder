@@ -25,19 +25,22 @@ if not exist "%~dp0reminder.exe" (
 :: 让用户输入提醒时间
 echo Enter the daily reminder time in 24-hour format (HH:MM, e.g. 23:00)
 echo Press Enter to use the default: 23:00
-set /p USER_TIME=Time:
+:INPUT_TIME
+set "USER_TIME="
+set /p "USER_TIME=Time: "
 
 if "!USER_TIME!"=="" set USER_TIME=23:00
 
-:: 校验时间格式（两位数字:两位数字）
-echo(!USER_TIME!| findstr /r "^[0-2][0-9]:[0-5][0-9]$" >nul
-if errorlevel 1 (
+:: 将中文冒号转换为英文冒号，并校验有效的 24 小时时间
+set "VALID_TIME="
+for /f "delims=" %%T in ('powershell -NoProfile -Command "$t=$env:USER_TIME.Replace([char]0xFF1A, [char]0x3A); if ($t -match '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$') { [Console]::Write($t) }"') do set "VALID_TIME=%%T"
+if not defined VALID_TIME (
     echo.
-    echo [ERROR] Invalid time format. Please run again and use HH:MM like 23:00.
+    echo [ERROR] Invalid time. Enter a valid 24-hour time, for example 23:00.
     echo.
-    pause
-    exit /b 1
+    goto INPUT_TIME
 )
+set "USER_TIME=!VALID_TIME!"
 
 :: 任务名和程序路径
 set TASK_NAME=GameReminder
